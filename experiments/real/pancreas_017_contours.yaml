@@ -1,0 +1,49 @@
+experiment: contour_variation
+case:
+  type: dicom
+  image_dir: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/CT_1_90396894
+  dose: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/RTDOSE_5_71734420/00000001.dcm
+  rtstruct: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/RTSTRUCT_6_69711878/00000001.dcm
+  prescription_gy: 39.0
+  roles:
+    ROI: ptv
+    Stomach_duo_planCT: oar
+    Bowel_sm_planCT: oar
+  prescription_is_reference: true
+metrics:
+  ROI:
+  - D98%
+  - D95%
+  - D50%
+  - D2%
+  - Dmean
+  - HI
+  Stomach_duo_planCT:
+  - Dmean
+  - D2%
+  - D5cc
+  - D0.5cc
+  Bowel_sm_planCT:
+  - Dmean
+  - D2%
+  - D5cc
+  - D0.5cc
+name: 'Pancreas-CT-CB_017: planning dose vs CBCT-day contours'
+contour_variation:
+  max_mm: 12
+  keys:
+  - Stomach_duo_planCT:D2%
+  - Bowel_sm_planCT:D2%
+  alternatives:
+  - label: CBCT 1
+    image_dir: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/CT_4_01697245
+    rtstruct: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/RTSTRUCT_7_21973145/00000001.dcm
+    names:
+      Stomach_duo_planCT: Stomach_duo_CBCT
+      Bowel_sm_planCT: Bowel_sm_CBCT
+  - label: CBCT 2
+    image_dir: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/CT_0_17766655
+    rtstruct: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/RTSTRUCT_8_63292789/00000001.dcm
+    names:
+      Stomach_duo_planCT: Stomach_duo_CBCT
+      Bowel_sm_planCT: Bowel_sm_CBCT

@@ -1,0 +1,30 @@
+experiment: grid_audit
+case:
+  type: dicom
+  image_dir: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/CT_1_90396894
+  dose: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/RTDOSE_5_71734420/00000001.dcm
+  rtstruct: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_017/RTSTRUCT_6_69711878/00000001.dcm
+  prescription_gy: 39.0
+  roles:
+    ROI: ptv
+    Stomach_duo_planCT: oar
+    Bowel_sm_planCT: oar
+  prescription_is_reference: true
+metrics:
+  ROI:
+  - D98%
+  - D95%
+  - D50%
+  - D2%
+  - Dmean
+  - HI
+  Stomach_duo_planCT: &id001
+  - Dmean
+  - D2%
+  - D5cc
+  - D0.5cc
+  Bowel_sm_planCT: *id001
+audit:
+  keys:
+  - ROI:D95%
+  - Stomach_duo_planCT:D2%

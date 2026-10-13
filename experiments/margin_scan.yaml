@@ -1,0 +1,12 @@
+# Validation + planning use: P(CTV minimum dose >= 95 % Rx) versus CTV->PTV margin.
+experiment: margin_scan
+seed: 1
+case:
+  type: synthetic
+  seed: 0
+margin_scan:
+  margins_mm: [2, 3, 4, 5, 6, 7, 8, 9]
+  n_courses: 600
+  method: blur
+  error_model: {sys_sigma_mm: [2, 2, 2], rand_sigma_mm: [3, 3, 3]}  # blur = infinitely many fractions
+  constraint: {structure: CTV, metric: Dmin, op: ">=", value: 95.0, pct_of_rx: true}

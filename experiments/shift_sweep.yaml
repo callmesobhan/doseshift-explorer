@@ -1,0 +1,11 @@
+# Deterministic sensitivity of metrics to a rigid patient shift along x / y / z.
+experiment: sweep
+case:
+  type: synthetic        # prostate-like phantom, no patient data needed
+  seed: 0
+  ctv_margin_mm: 5.0
+sweep:
+  max_mm: 10
+  step_mm: 0.5
+  keys: ["CTV:D98%", "PTV:D95%", "Rectum:Dmean"]
+  thresholds: {"CTV:D98%": 57.0}     # 95 % of the 60 Gy prescription

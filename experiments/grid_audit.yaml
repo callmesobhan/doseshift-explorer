@@ -1,0 +1,9 @@
+# How large is each dose-grid alignment assumption, expressed as an equivalent setup error?
+experiment: grid_audit
+case:
+  type: synthetic
+  seed: 0
+audit:
+  keys: ["PTV:D95%", "Rectum:D2%"]
+  max_mm: 12
+  min_delta: 0.1          # changes below this (metric units) are reported as negligible

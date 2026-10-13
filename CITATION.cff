@@ -1,0 +1,92 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below. If you use results derived from the TCIA
+  datasets it analyses, also cite those datasets and the TCIA repository paper (see references).
+title: "DoseShift Explorer"
+type: software
+authors:
+  - family-names: Shahbazi
+    given-names: Sobhan
+version: 0.1.0
+date-released: "2026-10-13"
+license: MIT
+repository-code: "https://github.com/callmesobhan/doseshift-explorer"
+abstract: >-
+  Research tool for exploring how controlled geometric perturbations (setup shifts, rotations,
+  deformation) and dose-grid alignment assumptions (voxel centre vs corner, resolution,
+  interpolation, structure sampling) change DVHs and plan-quality metrics in radiotherapy.
+  Not for clinical use.
+keywords:
+  - radiotherapy
+  - DVH
+  - DICOM-RT
+  - dose robustness
+  - Monte Carlo
+  - medical physics
+references:
+  - type: data
+    authors:
+      - {family-names: Hong, given-names: Jun}
+      - {family-names: Reyngold, given-names: Marsha}
+      - {family-names: Crane, given-names: Christopher}
+      - {family-names: Cuaron, given-names: John}
+      - {family-names: Hajj, given-names: Carla}
+      - {family-names: Mann, given-names: Justin}
+      - {family-names: Zinovoy, given-names: Melissa}
+      - {family-names: Yorke, given-names: Ellen}
+      - {family-names: LoCastro, given-names: Eve}
+      - {family-names: Apte, given-names: Aditya P.}
+      - {family-names: Mageras, given-names: Gig}
+    title: >-
+      Breath-hold CT and cone-beam CT images with expert manual organ-at-risk segmentations from
+      radiation treatments of locally advanced pancreatic cancer (Pancreatic-CT-CBCT-SEG)
+    year: 2021
+    version: "2"
+    publisher: {name: The Cancer Imaging Archive}
+    doi: 10.7937/TCIA.ESHQ-4D90
+    license: CC-BY-4.0
+  - type: data
+    authors:
+      - {family-names: Shapey, given-names: Jonathan}
+      - {family-names: Kujawa, given-names: Aaron}
+      - {family-names: Dorent, given-names: Reuben}
+      - {family-names: Wang, given-names: Guotai}
+      - {family-names: Bisdas, given-names: Sotirios}
+      - {family-names: Dimitriadis, given-names: Alexis}
+      - {family-names: Grishchuk, given-names: Diana}
+      - {family-names: Paddick, given-names: Ian}
+      - {family-names: Kitchen, given-names: Neil}
+      - {family-names: Bradford, given-names: Robert}
+      - {family-names: Saeed, given-names: Shakeel}
+      - {family-names: Ourselin, given-names: Sebastien}
+      - {family-names: Vercauteren, given-names: Tom}
+    title: >-
+      Segmentation of Vestibular Schwannoma from Magnetic Resonance Imaging: An Open Annotated
+      Dataset and Baseline Algorithm (Vestibular-Schwannoma-SEG)
+    year: 2021
+    version: "2"
+    publisher: {name: The Cancer Imaging Archive}
+    doi: 10.7937/TCIA.9YTJ-5Q73
+    license: CC-BY-4.0
+  - type: article
+    authors:
+      - {family-names: Clark, given-names: Kenneth}
+      - {family-names: Vendt, given-names: Bruce}
+      - {family-names: Smith, given-names: Kirk}
+      - {family-names: Freymann, given-names: John}
+      - {family-names: Kirby, given-names: Justin}
+      - {family-names: Koppel, given-names: Paul}
+      - {family-names: Moore, given-names: Stephen}
+      - {family-names: Phillips, given-names: Stanley}
+      - {family-names: Maffitt, given-names: David}
+      - {family-names: Pringle, given-names: Michael}
+      - {family-names: Tarbox, given-names: Lawrence}
+      - {family-names: Prior, given-names: Fred}
+    title: "The Cancer Imaging Archive (TCIA): Maintaining and Operating a Public Information Repository"
+    journal: Journal of Digital Imaging
+    year: 2013
+    volume: 26
+    issue: 6
+    start: 1045
+    end: 1057
+    doi: 10.1007/s10278-013-9622-7

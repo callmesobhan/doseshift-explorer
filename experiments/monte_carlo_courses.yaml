@@ -1,0 +1,18 @@
+# Fractionated courses under random + systematic setup error (van Herk population model).
+experiment: monte_carlo
+seed: 1
+case:
+  type: synthetic
+  seed: 0
+monte_carlo:
+  n_courses: 300
+  method: sampled          # 'blur' = closed-form many-fraction limit, ~10x faster
+  error_model:
+    sys_sigma_mm: [2.0, 2.0, 2.0]    # Sigma (x=LR, y=AP, z=SI)
+    rand_sigma_mm: [3.0, 3.0, 3.0]   # sigma
+    sys_sigma_deg: [0.0, 0.0, 0.0]
+    rand_sigma_deg: [0.0, 0.0, 0.0]
+    n_fractions: 20
+  constraints:
+    - {structure: CTV, metric: "D98%", op: ">=", value: 95.0, pct_of_rx: true}
+    - {structure: Rectum, metric: "V50%", op: "<=", value: 5.0}
