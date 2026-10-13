@@ -1,0 +1,19 @@
+experiment: resolution_scan
+case:
+  type: dicom
+  image_dir: data/raw/vs-seg/VS-SEG-154/MR_0_93358728
+  dose: data/raw/vs-seg/VS-SEG-154/RTDOSE_2_52468627/00000001.dcm
+  rtstruct: data/raw/vs-seg/VS-SEG-154/RTSTRUCT_5_40636994/00000001.dcm
+  prescription_gy: 13.0
+  roles:
+    TV: ptv
+    Cochlea: oar
+resolution_scan:
+  factors:
+  - 1
+  - 2
+  - 3
+  - 4
+  keys:
+  - TV:D95%
+  - TV:Dmean

@@ -84,7 +84,8 @@ embed patient anatomy; set `show_image: true` in a config to see it locally. Rea
   every figure; Rx-dependent metrics (CI, GI, V%Rx) are omitted. VS-SEG's 13 Gy comes from the RTPLAN.
 - **Pancreas CBCT-day contours** live in the planning frame of reference ("Aligned CT" series) and
   pair with the *planning* dose. That is what `contour_variation` uses. The original CBCT series
-  (different frames of reference, 0.51 mm in-plane) are downloaded but not used yet.
+  (different frames of reference, 0.51 mm in-plane, truncated field of view) are used only by
+  `scripts/cbct_registration.py`, whose results show they cannot give setup errors (docs/experiments.md R8).
 - VS-SEG structures are tiny (tumour ~1-2 cc, cochlea 0.1 cc) on a 1 mm dose grid; contours include
   a `*Skull` ROI that is ignored.
 

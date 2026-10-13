@@ -61,8 +61,8 @@ passes.
 
 ![margin](docs/img/margin_scan.png)
 
-At the recipe margin (6.95 mm) the simulated probability that the CTV minimum dose stays ≥ 95 % Rx is
-0.89 ± 0.013, against the recipe's 90 % design target. **Treat this as a consistency check, not a
+At a 7 mm margin (the recipe gives 6.95 mm; the scan uses whole millimetres) the simulated probability
+that the CTV minimum dose stays ≥ 95 % Rx is 0.89 ± 0.013, against the recipe's 90 % design target. **Treat this as a consistency check, not a
 validation:** an independent reviewer found it moves between 0.79 and 0.91 when mask resolution,
 dose-grid spacing, the dose plateau level or the fraction model are changed one at a time
 ([docs/experiments.md](docs/experiments.md), R4). `margin_scan` runs on the synthetic phantom only and
@@ -73,7 +73,7 @@ is not a tool for choosing clinical margins.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[all]"          # core + SimpleITK + Streamlit + pytest/ruff
-pytest                           # 144 tests (141 + 3 skipped without the downloaded data), ~30 s
+pytest                           # 183 tests (178 + 5 skipped without the downloaded data), ~40 s
 doseshift demo                   # all four experiments -> outputs/demo/
 streamlit run app/streamlit_app.py
 ```
@@ -117,10 +117,14 @@ What the real data showed, in brief ([docs/experiments.md](docs/experiments.md),
   1.2-2.3 mm on the pancreas grids (by construction). Its cost in dose is largest for the small tumour:
   up to 1.6 Gy, 12 % of the 13 Gy prescription for a 1 cc tumour, against about 3 % for the pancreas
   target's D95. Four plans cannot tell whether that scales with voxel size or with site and gradient.
+- On a single plan the cost grows with voxel size (roughly linearly for gradient-limited metrics), but
+  the cost per millimetre differs 25-fold between plans and metrics (R7).
 - Unlike the phantom, mean dose of the real OARs is also grid-sensitive (up to ~5 %), not only D2%.
 - Redrawn pancreas organ contours on CBCT-day images (planning dose fixed) are worth at least 2.5-5.4 mm
   of rigid shift for stomach/duodenum D2% in one patient (a lower bound; the centroids moved 5-9 mm),
   and in the other differ so much in volume (1.7-4.7×) that no rigid-equivalent is reported.
+- CT-to-CBCT mutual-information registration is validated on known motions, but on the real pancreas CBCTs
+  only 1 of 4 registrations has a well-defined optimum and none can give a setup error (R8).
 
 ![vs-seg](docs/img/real_vs_seg135_audit.png)
 ![pancreas](docs/img/real_pancreas017_contours.png)
@@ -140,6 +144,7 @@ and no image data is redistributed in this repo. Full citations: [data/README.md
 | `monte_carlo` | What is P(constraint met) under random + systematic error? | `mc_*.csv`, `mc_dvh_band.png`, `mc_hist.png` |
 | `margin_scan` | What CTV-PTV margin is needed? (validation) | `margin_scan.csv/png` |
 | `contour_variation` | How much does an organ's dose change when its contour is redrawn on a later image (dose fixed), in mm of rigid shift? | `contour_variation.csv`, `dvh_contours.png`, `contour_equivalence.png` |
+| `resolution_scan` | Does the cost of a half-voxel error scale with voxel size? (one plan, dose coarsened 1-4×) | `resolution_scan.csv/png` |
 
 Every run also writes `geometry.png`, `nominal.csv` and `provenance.json` (config, resolved defaults,
 package versions, and for DICOM runs the input UIDs and file hashes); `doseshift run outputs/x/provenance.json`
@@ -182,7 +187,7 @@ src/doseshift/
 app/streamlit_app.py   interactive explorer
 experiments/*.yaml     annotated experiment configs
 docs/                  design · conventions · experiments · validation · limitations · roadmap
-tests/                 144 tests (geometry, DVH, perturbations, MC, DICOM, discovery, hardening, downloader, review fixes, registration, CLI, app, real data)
+tests/                 183 tests (geometry, DVH, perturbations, MC, DICOM, discovery, hardening, downloader, review fixes, registration, CLI, app, real data)
 ```
 
 ## Documentation

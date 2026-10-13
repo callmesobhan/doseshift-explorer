@@ -51,6 +51,23 @@ Read before using any number from this repo for anything beyond research and tea
 - MR intensities are not calibrated (no HU); Gamma Knife frame/coordinate details are taken from
   the standard DICOM geometry only.
 
+**Registration**
+
+- Rigid registration is accurate to < 0.3 mm when the whole body is in the field of view and
+  0.5-1.2 mm when the field truncates it (the case for CBCT). The returned translation is the
+  displacement of the chosen rotation centre; pass the isocentre if you want a shift at the isocentre.
+- Cross-scanner (mutual-information) registration has no ground truth on real pairs. Accept a result
+  only if the optimum is start-independent (`scripts/cbct_registration.py` reports the spread); on the
+  pancreas CBCTs that held for 1 of 4 pairs, and the frames are unrelated and carry no isocentre, so
+  none gives a setup error. A registration that hits the iteration limit warns and sets
+  `converged=False`; one that cannot start raises.
+
+**Case discovery**
+
+- `discover` pairs files from DICOM references and reports what it cannot place, but it cannot know
+  your intent: with several plans or image series it returns one case each, and with a prescription
+  that differs per target or phase it returns none (supply `prescription_gy`).
+
 **Data and software**
 
 - The phantom is analytic and prostate-like; effect sizes depend on dose gradient, grid spacing

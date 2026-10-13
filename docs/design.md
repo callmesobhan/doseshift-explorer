@@ -120,6 +120,12 @@ flowchart TD
 
 ## Performance
 
-Synthetic case: 3 structures, ~15 k points; one dose interpolation ≈ 1 ms. `sampled` MC costs
-`n_courses × n_fractions` interpolations (100 courses × 20 fractions ≈ 2.4 s on a laptop); `blur` costs one per course (≈ 0.2 s per 100 courses). Cubic
-interpolation re-prefilters the dose per call: use it for audits, not for large Monte Carlo runs.
+Measured on a laptop (macOS, Python 3.13) with the synthetic phantom: 4 structures, about 17 k sample
+points in total. One dose interpolation of all points takes about 0.8 ms and `evaluate(state)` about
+1.5 ms. `sampled` Monte Carlo costs `n_courses × n_fractions` interpolations (100 courses × 20
+fractions ≈ 2.4 s); `blur` costs one per course (≈ 0.2 s per 100 courses, about 12× faster; it also
+builds one refined, blurred dose per run). A full grid audit on a real 1 L pancreas target takes
+about 20 s; a resolution scan a few seconds per factor. Cubic interpolation re-prefilters the dose
+per call: use it for audits, not for large Monte Carlo runs. Mean-squares registration of a full-size
+same-grid CT pair (74 × 512 × 512, full sampling) took about two minutes in an independent run;
+mutual information uses 25 % random sampling and is faster per iteration.

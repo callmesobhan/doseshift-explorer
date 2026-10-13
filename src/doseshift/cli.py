@@ -55,7 +55,7 @@ def _cmd_inspect(args) -> int:
 
 
 def _cmd_discover(args) -> int:
-    from .dicomrt import case_config, discover_cases
+    from .dicomrt import case_config, discover_with_report
     from .state import ROLES
 
     if args.roles and not args.write_config:
@@ -66,9 +66,11 @@ def _cmd_discover(args) -> int:
         if not sep or role not in ROLES:
             raise ValueError(f"bad --roles entry {item!r}: use ROI_NAME=ROLE with ROLE in {ROLES}")
         roles[name] = role
-    cases = discover_cases(args.patient_dir)
+    cases, skipped = discover_with_report(args.patient_dir)
+    for reason in skipped:
+        print(f"skipped RTSTRUCT: {reason}")
     if not cases:
-        print("no RTSTRUCT with a matching downloaded image series found")
+        print("no analysable case found (see the reasons above, if any)")
         return 1
     for i, c in enumerate(cases):
         print(f"case {i}: " + c.summary())
@@ -129,7 +131,9 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("patient_dir")
     c.add_argument("--roles", help="e.g. TV=ptv,Cochlea=oar; with --write-config makes a config")
     c.add_argument("--case", type=int, default=0, help="which discovered case (default 0)")
-    c.add_argument("--experiment", default="grid_audit", choices=["grid_audit", "sweep"])
+    c.add_argument(
+        "--experiment", default="grid_audit", choices=["grid_audit", "sweep", "resolution_scan"]
+    )
     c.add_argument("--prescription", type=float, help="Gy; needed when the data has no RTPLAN")
     c.add_argument("--write-config", metavar="FILE", help="write a ready-to-run YAML here")
     c.set_defaults(fn=_cmd_discover)

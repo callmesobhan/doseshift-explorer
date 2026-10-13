@@ -50,3 +50,49 @@ def test_vs_seg_rtplan_prescription_and_negative_frame_offsets():
     ev = evaluate(state, {"TV": ["D95%"]}).flat()
     assert ev["TV:D95%"] == pytest.approx(13.3, abs=0.7)  # plan covers the tumour at ~Rx
     assert state.clouds["TV"].total_volume / 1000 == pytest.approx(1.0, abs=0.3)  # cc
+
+
+@needs_pancreas
+def test_mutual_information_recovers_known_motion_on_real_ct_anatomy_across_scanner_differences():
+    """Real pancreas planning CT, 'imaged' by a different virtual scanner (coarser grid, unrelated
+    frame, nonlinear intensities, noise) after a known rigid motion; start 12 mm off."""
+    import glob
+
+    from doseshift.dicomrt import load_image_series
+    from doseshift.geometry import Grid, RigidMotion
+    from doseshift.registration import intensity_centroid_mm, register_rigid
+    from helpers import cbct_like
+
+    g, v, _ = load_image_series(glob.glob(str(PANC / "CT_2_*"))[0])
+    crop = v[:, 128:384, 128:384]
+    grid = Grid(crop.shape, g.translated_voxels((128, 128, 0)).affine)
+    lo, hi = grid.extent_xyz()
+    centre = tuple((lo + hi) / 2)
+    t, r, offset = (-4.0, 3.0, 2.0), (1.0, -1.5, 2.0), np.array([83.0, -41.0, 117.0])
+    mg, mv = cbct_like(grid, np.ascontiguousarray(crop), RigidMotion(t, r, centre), offset, 1)
+    t0 = intensity_centroid_mm(mg, mv) - intensity_centroid_mm(grid, crop) + [12.0, 0.0, 0.0]
+    res = register_rigid(
+        (grid, np.ascontiguousarray(crop)),
+        (mg, mv),
+        center_mm=centre,
+        metric="mi",
+        initial_translation_mm=tuple(t0),
+    )
+    assert np.allclose(res.motion.translation_mm, np.array(t) + offset, atol=1.5)
+    assert np.allclose(res.motion.rotation_deg, r, atol=0.5)
+
+
+@needs_pancreas
+def test_real_ct_and_cbct_with_unrelated_frames_raise_instead_of_returning_identity():
+    """Before the fix this returned translation 0, rotation 0 and a 1.8e308 metric."""
+    import glob
+
+    from doseshift.dicomrt import load_image_series
+    from doseshift.registration import register_rigid
+
+    plan = load_image_series(glob.glob(str(PANC / "CT_2_*"))[0])
+    cbct = load_image_series(glob.glob(str(PANC / "CT_1_*"))[0])
+    with pytest.raises(ValueError, match="barely overlap"):
+        register_rigid(
+            (plan[0], plan[1]), (cbct[0], cbct[1]), shrink_factors=(8,), smoothing_sigmas_vox=(2.0,)
+        )

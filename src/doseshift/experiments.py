@@ -7,6 +7,7 @@ wrong voxel convention" and "the patient was misaligned" on one axis.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable, Sequence
 
 import numpy as np
@@ -330,3 +331,67 @@ def contour_variation(
                     }
                 )
     return pd.DataFrame(rows)
+
+
+def resolution_scan(
+    state: PlanState,
+    factors: Sequence[int] = (1, 2, 3, 4),
+    keys: Sequence[str] | None = None,
+    metrics: dict[str, list[str]] | None = None,
+    half: float = 0.5,
+) -> pd.DataFrame:
+    """Does the cost of a half-voxel convention error scale with voxel size? One plan, many grids.
+
+    For each factor ``f`` the dose is block-coarsened ``f`` times (``f = 1`` is native) and the
+    centre/corner offset (+/- ``half`` voxel on every index axis) is applied *to that coarsened
+    plan*, with the metric change measured against the coarsened plan itself. Voxel size is the only
+    thing that varies: patient, structures and dose distribution are the same, which four different
+    patients cannot guarantee. Rows: factor x metric with the displacement ``|A v|`` (mm), the
+    signed change for -half and +half, their mean magnitude (``cost``) and ``gy_per_mm`` =
+    cost / displacement (a property of the local dose gradient, so roughly constant across ``f``
+    if the cost is linear in displacement).
+
+    Coarsening that drops trailing voxels (odd grid shapes) is expected here and not warned about.
+    """
+    keys = list(keys) if keys else [k for k in evaluate(state, metrics).flat() if ":D" in k][:4]
+    rows = []
+    for f in factors:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            coarse = state if f == 1 else DoseCoarsen(int(f))(state)
+            base = evaluate(coarse, metrics).flat()
+            moved = {
+                sign: evaluate(DoseGridOffset((sign * half,) * 3)(coarse), metrics).flat()
+                for sign in (-1, +1)
+            }
+        A = coarse.dose.grid.affine[:3, :3]
+        disp = float(np.linalg.norm(A @ np.full(3, half)))
+        for key in keys:
+            dm, dp = moved[-1][key] - base[key], moved[+1][key] - base[key]
+            cost = 0.5 * (abs(dm) + abs(dp))
+            rows.append(
+                {
+                    "factor": int(f),
+                    "dose_spacing_mm": float(coarse.dose.grid.spacing_xyz.mean()),
+                    "displacement_mm": disp,
+                    "metric": key,
+                    "baseline": base[key],
+                    "delta_minus": dm,
+                    "delta_plus": dp,
+                    "cost": cost,
+                    "gy_per_mm": cost / disp,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def loglog_slope(df: pd.DataFrame, key: str) -> float:
+    """Slope of log(cost) against log(displacement) for one metric of ``resolution_scan``.
+
+    ~1 means the cost is linear in the displacement (i.e. in voxel size); ~0 means it does not
+    depend on it. NaN with fewer than two usable points.
+    """
+    d = df[(df["metric"] == key) & (df["cost"] > 0)]
+    if len(d) < 2:
+        return float("nan")
+    return float(np.polyfit(np.log(d["displacement_mm"]), np.log(d["cost"]), 1)[0])

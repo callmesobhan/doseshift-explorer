@@ -9,6 +9,9 @@ Light/dark steps and the slot order were checked with the dataviz skill's palett
 
 from __future__ import annotations
 
+import textwrap
+import warnings
+
 import numpy as np
 import pandas as pd
 from matplotlib import colors as mcolors
@@ -19,7 +22,7 @@ from matplotlib.patches import Patch
 
 from .evaluate import Evaluation
 from .geometry import Grid, sample_volume
-from .metrics import Constraint
+from .metrics import Constraint, metric_unit
 from .montecarlo import MCResult
 from .state import PlanState
 
@@ -65,11 +68,19 @@ DPI = 160
 
 
 def entity_colors(names: list[str], theme: str = "light") -> dict[str, str]:
-    """Slot per entity in order of first appearance; beyond 8 entities, fold the plot instead."""
+    """A fixed colour slot per entity, in the order given (pass the plan's full structure list so a
+    structure keeps its colour in every figure). Beyond the 8 validated slots the rest share a
+    neutral grey and are told apart by the legend."""
     series = THEMES[theme]["series"]
     if len(names) > len(series):
-        raise ValueError(f"{len(names)} entities exceed the {len(series)} validated colour slots")
-    return {n: series[i] for i, n in enumerate(names)}
+        warnings.warn(
+            f"{len(names)} structures exceed the {len(series)} validated colours; "
+            f"{', '.join(names[len(series) :])} share a neutral grey",
+            stacklevel=2,
+        )
+    return {
+        n: series[i] if i < len(series) else THEMES[theme]["muted"] for i, n in enumerate(names)
+    }
 
 
 def _fig(width: float, height: float, theme: str, **kw):
@@ -98,6 +109,10 @@ def _style(ax, t, grid_axis="y") -> None:
 def _title(fig, t, title, subtitle=None) -> None:
     """Title and subtitle placed in inches from the top, so short figures do not collide."""
     h = fig.get_figheight()
+    if subtitle:  # never run off the figure: shorten to what fits
+        subtitle = textwrap.shorten(
+            subtitle, width=max(20, int(fig.get_figwidth() * 15)), placeholder=" ..."
+        )
     fig.text(
         0.01,
         1 - 0.07 / h,
@@ -134,12 +149,16 @@ def plot_dvh_overlay(
     subtitle: str | None = None,
     theme: str = "light",
     rx_label: str = "Rx",
+    color_names: list[str] | None = None,
 ) -> Figure:
-    """Cumulative DVHs; colour = structure, line style = scenario (first is the baseline)."""
+    """Cumulative DVHs; colour = structure, line style = scenario (first is the baseline).
+
+    ``color_names`` fixes the colour slots (pass the plan's full structure list to keep colours
+    identical across figures that show different subsets)."""
     labels = list(evals)
     first = evals[labels[0]]
     structures = structures or list(first.dvhs)
-    colors = entity_colors(list(first.dvhs), theme)
+    colors = entity_colors(color_names or list(first.dvhs), theme)
     fig, t = _fig(7.2, 4.4, theme)
     ax = fig.add_axes([0.085, 0.13, 0.89, 0.72])
     _style(ax, t)
@@ -186,10 +205,11 @@ def plot_mc_bands(
     q: tuple[float, float] = (5, 95),
     theme: str = "light",
     rx_label: str = "Rx",
+    color_names: list[str] | None = None,
 ) -> Figure:
-    """Nominal DVH (line) inside the q-percentile envelope of the simulated courses (wash)."""
+    """Nominal DVH (line) inside the pointwise q-percentile envelope of the course DVHs (wash)."""
     structures = structures or list(result.dvh_curves)
-    colors = entity_colors(list(result.dvh_curves), theme)
+    colors = entity_colors(color_names or list(result.dvh_curves), theme)
     fig, t = _fig(7.2, 4.4, theme)
     ax = fig.add_axes([0.085, 0.13, 0.89, 0.72])
     _style(ax, t)
@@ -213,7 +233,13 @@ def plot_mc_bands(
     ax.set_xlabel("Dose (Gy)")
     ax.set_ylabel("Volume (%)")
     handles = [Line2D([], [], color=colors[s], linewidth=2, label=s) for s in structures]
-    handles.append(Patch(facecolor=t["muted"], alpha=0.3, label=f"{q[0]:g}-{q[1]:g}% of courses"))
+    handles.append(
+        Patch(
+            facecolor=t["muted"],
+            alpha=0.3,
+            label=f"pointwise {q[0]:g}-{q[1]:g}th percentile of course DVHs",
+        )
+    )
     _legend(ax, handles, t, loc="best")
     m = result.model
     _title(
@@ -227,14 +253,21 @@ def plot_mc_bands(
 
 
 def plot_metric_distribution(
-    result: MCResult, key: str, constraint: Constraint | None = None, theme: str = "light"
+    result: MCResult,
+    key: str,
+    constraint: Constraint | None = None,
+    theme: str = "light",
+    color_names: list[str] | None = None,
 ) -> Figure:
     """Histogram of one metric across courses, with the planned value and an optional threshold."""
     vals = result.metrics[key].to_numpy()
     fig, t = _fig(6.4, 3.8, theme)
     ax = fig.add_axes([0.1, 0.15, 0.87, 0.68])
     _style(ax, t)
-    ax.hist(vals, bins=30, color=THEMES[theme]["series"][0], edgecolor=t["surface"], linewidth=1)
+    structure, metric = key.split(":", 1)
+    colors = entity_colors(color_names or list(result.dvh_curves), theme)
+    unit = metric_unit(metric)
+    ax.hist(vals, bins=30, color=colors[structure], edgecolor=t["surface"], linewidth=1)
     top = ax.get_ylim()[1]
     nominal = result.nominal.flat()[key]
     ax.axvline(nominal, color=t["ink"], linewidth=1.5)
@@ -243,10 +276,10 @@ def plot_metric_distribution(
     if constraint is not None:
         thr = constraint.threshold(result.prescription_gy)
         ax.axvline(thr, color=t["muted"], linewidth=1.5)
-        _label(ax, thr, top * 1.01, f"threshold {thr:.1f} ", t, va="bottom", ha="right")
+        _label(ax, thr, top * 1.01, f"threshold {thr:.1f} {unit} ", t, va="bottom", ha="right")
         p = result.probability(constraint)
         sub = f"P({constraint}) = {p:.0%} over {result.n_courses} courses"
-    ax.set_xlabel(key)
+    ax.set_xlabel(f"{key} ({unit})")
     ax.set_ylabel("Courses")
     _title(fig, t, f"Distribution of {key}", sub)
     return fig
@@ -267,9 +300,10 @@ def plot_sweeps(
 ) -> Figure:
     """Small multiples: one panel per metric, one line per patient-shift axis."""
     thresholds = thresholds or {}
-    axes_names = {"x": "x (left-right)", "y": "y (post.-ant.)", "z": "z (sup.-inf.)"}
+    axes_names = {"x": "x (+ = patient left)", "y": "y (+ = posterior)", "z": "z (+ = superior)"}
     fig, t = _fig(3.0 * len(keys) + 0.6, 3.9, theme)
-    colors = dict(zip("xyz", THEMES[theme]["series"][:3], strict=True))
+    # slots 5-7: kept apart from the slots structures use in the other figures
+    colors = dict(zip("xyz", THEMES[theme]["series"][4:7], strict=True))
     panels = np.atleast_1d(fig.subplots(1, len(keys)))
     fig.subplots_adjust(left=0.07, right=0.98, top=0.78, bottom=0.17, wspace=0.32)
     for ax, key in zip(panels, keys, strict=True):
@@ -308,8 +342,9 @@ def plot_equivalence(
     max_mm: float = 12.0,
     theme: str = "light",
     title: str = "How big a rigid shift is each grid assumption worth?",
-    subtitle: str = "Smallest axis-aligned shift with the same effect on the metric (lower bound)",
+    subtitle: str = "Smallest axis-aligned patient shift with the same effect (lower bound)",
     na_label: str = "n/a: no rigid shift reproduces this",
+    color_names: list[str] | None = None,
 ) -> Figure:
     """Grid-assumption audit: each convention choice expressed as an equivalent rigid shift.
 
@@ -322,7 +357,8 @@ def plot_equivalence(
     order = pivot[metrics].replace(np.inf, max_mm * 1.5).max(axis=1).sort_values().index.tolist()
     height = 1.5 + 0.27 * len(order)
     fig, t = _fig(4.2 + 3.6 * len(metrics), height, theme)
-    color = THEMES[theme]["series"][0]
+    structures_here = list(dict.fromkeys(k.split(":", 1)[0] for k in metrics))
+    slot = entity_colors(color_names or structures_here, theme)
     panels = np.atleast_1d(fig.subplots(1, len(metrics), sharey=True))
     fig.subplots_adjust(
         left=0.36 / len(metrics) ** 0.5 * (1 if len(metrics) == 1 else 0.8),
@@ -334,6 +370,7 @@ def plot_equivalence(
     ys = np.arange(len(order))
     for ax, key in zip(panels, metrics, strict=True):
         _style(ax, t, grid_axis="x")
+        color = slot[key.split(":", 1)[0]]
         sub = eq[eq["metric"] == key].set_index("scenario")
         for y, name in zip(ys, order, strict=True):
             row = sub.loc[name]
@@ -361,7 +398,13 @@ def plot_equivalence(
         ax.set_yticks(ys)
         ax.set_yticklabels(order, fontsize=8, color=t["ink"])
         ax.set_ylim(len(order) - 0.4, -0.6)
-        ax.set_xlim(0, max_mm * 1.5)
+        finite = [
+            v
+            for v in list(sub["equivalent_shift_mm"]) + list(sub.get("displacement_mm", []))
+            if np.isfinite(v)
+        ]
+        any_inf = bool(np.isinf(sub["equivalent_shift_mm"]).any())
+        ax.set_xlim(0, max_mm * 1.5 if any_inf or not finite else max(2.0, 1.8 * max(finite)))
         ax.set_xlabel("Equivalent rigid shift (mm)")
         ax.set_title(key, color=t["ink"], fontsize=9, loc="left")
         ax.tick_params(axis="y", length=0)
@@ -500,12 +543,13 @@ def plot_margin_scan(
     target: float = 0.9,
     theme: str = "light",
     label: str = "P(constraint met)",
+    color: str | None = None,
 ) -> Figure:
-    """Probability of meeting a constraint versus CTV->PTV margin."""
+    """Probability of meeting a constraint versus CTV->PTV margin (``color``: the structure's)."""
     fig, t = _fig(6.2, 3.8, theme)
     ax = fig.add_axes([0.1, 0.16, 0.86, 0.66])
     _style(ax, t)
-    color = THEMES[theme]["series"][0]
+    color = color or THEMES[theme]["series"][0]
     ax.axhline(target, color=t["muted"], linewidth=1)
     _label(ax, df["margin_mm"].min(), target + 0.015, f" target {target:.0%}", t, va="bottom")
     if "se" in df:
@@ -540,5 +584,64 @@ def plot_margin_scan(
         t,
         "Margin needed for robust coverage",
         "Monte Carlo over simulated courses (band = 2 standard errors); synthetic phantom only",
+    )
+    return fig
+
+
+def plot_resolution_scan(
+    df: pd.DataFrame, theme: str = "light", color_names: list[str] | None = None
+) -> Figure:
+    """Cost of a half-voxel convention error against the displacement it amounts to (one plan).
+
+    Each point is the same plan with its dose coarsened by 1x, 2x, 3x ... so only voxel size varies.
+    A straight line through the origin would mean the cost is linear in voxel size.
+    """
+    from .experiments import loglog_slope
+
+    keys = list(dict.fromkeys(df["metric"]))
+    structures = list(dict.fromkeys(k.split(":")[0] for k in keys))
+    colors = entity_colors(color_names or structures, theme)
+    styles = ["-", (0, (5, 2.5)), (0, (1.2, 2.2))]
+    fig, t = _fig(6.6, 4.2, theme)
+    ax = fig.add_axes([0.1, 0.15, 0.86, 0.66])
+    _style(ax, t)
+    seen: dict[str, int] = {}
+    handles = []
+    for key in keys:
+        d = df[df["metric"] == key].sort_values("displacement_mm")
+        s_name = key.split(":")[0]
+        style = styles[seen.get(s_name, 0) % len(styles)]
+        seen[s_name] = seen.get(s_name, 0) + 1
+        ax.plot(
+            d["displacement_mm"],
+            d["cost"],
+            color=colors[s_name],
+            linewidth=2,
+            linestyle=style,
+            marker="o",
+            markersize=5,
+            markeredgecolor=t["surface"],
+            markeredgewidth=2,
+        )
+        handles.append(
+            Line2D(
+                [],
+                [],
+                color=colors[s_name],
+                linewidth=2,
+                linestyle=style,
+                label=f"{key} (log-log slope {loglog_slope(df, key):.1f})",
+            )
+        )
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel("Dose displacement of a half-voxel offset, |A v| (mm)")
+    ax.set_ylabel("Mean |change| of the metric (Gy)")
+    _legend(ax, handles, t, loc="upper left")
+    _title(
+        fig,
+        t,
+        "Does the cost of a half-voxel error scale with voxel size?",
+        "One plan, dose coarsened 1x to 4x; slope 1 = linear in voxel size",
     )
     return fig

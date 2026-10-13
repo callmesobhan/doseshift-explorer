@@ -45,6 +45,12 @@ jobs:
               python -c "import pandas as pd,sys; df=pd.read_csv(sys.argv[1]); print(df.sort_values('equivalent_shift_mm',ascending=False).head(6).round(2).to_string(index=False))" "$d/audit_equivalence.csv"
               echo '```'
             done
+            echo "## Resolution scan (cost of a half-voxel error vs voxel size)"
+            for d in outputs/real/*_resolution; do
+              echo "### $(basename "$d")"; echo '```'
+              python -c "import pandas as pd,sys; df=pd.read_csv(sys.argv[1]); print(df[['factor','displacement_mm','metric','cost','gy_per_mm']].round(2).to_string(index=False))" "$d/resolution_scan.csv"
+              echo '```'
+            done
             echo "## Contour variation"
             for d in outputs/real/*_contours; do
               echo "### $(basename "$d")"; echo '```'

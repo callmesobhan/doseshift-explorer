@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from doseshift.cli import main
-from doseshift.config import load_config, validate_config
+from doseshift.config import EXPERIMENTS, load_config, validate_config
 from doseshift.runner import demo_configs, run_experiment
 
 EXPERIMENT_DIR = Path(__file__).parent.parent / "experiments"
@@ -13,7 +13,7 @@ EXPERIMENT_DIR = Path(__file__).parent.parent / "experiments"
 @pytest.mark.parametrize("path", sorted(EXPERIMENT_DIR.glob("*.yaml")), ids=lambda p: p.name)
 def test_example_configs_parse(path):
     cfg = load_config(path)
-    assert cfg["experiment"] in ("sweep", "grid_audit", "monte_carlo", "margin_scan")
+    assert cfg["experiment"] in EXPERIMENTS
 
 
 def test_validation_errors():
