@@ -13,3 +13,9 @@ First public release.
 - DICOM-RT reader (CT/MR, RTDOSE, RTSTRUCT, RTPLAN prescription), header-reference case discovery,
   synthetic DICOM writer; SimpleITK registration.
 - CLI, YAML experiments, Streamlit explorer, public-data downloader (`scripts/download_tcia.py`).
+- Within-plan `resolution_scan` (does the cost of a half-voxel error scale with voxel size?),
+  mutual-information CT-CBCT registration with ground-truth validation and a diagnostics script
+  (`scripts/cbct_registration.py`).
+- Three independent reviews acted on (engineering/release, scientific, registration/discovery/plots):
+  loud registration failures, unambiguous case discovery, sign-aware equivalent shifts, consistent
+  conformity index, hardened readers and downloader, corrected claims (see `docs/validation.md`).

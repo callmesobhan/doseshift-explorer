@@ -26,6 +26,7 @@ from .experiments import (
     contour_variation,
     directional_sweeps,
     margin_scan,
+    resolution_scan,
 )
 from .montecarlo import ErrorModel, simulate
 from .perturb import DoseCoarsen, DoseGridOffset, RigidShift
@@ -141,7 +142,10 @@ def run_experiment(cfg: dict, outdir: str | Path) -> dict[str, Path]:
         )
         table("audit", df)
         table("audit_equivalence", eq)
-        figure("audit_equivalence", viz.plot_equivalence(eq, keys, ac.get("max_mm", 12.0), theme))
+        figure(
+            "audit_equivalence",
+            viz.plot_equivalence(eq, keys, ac.get("max_mm", 12.0), theme, color_names=state.names),
+        )
         scenarios = {
             "planned": evaluate(state, metrics),
             "dose offset +1/2 voxel (ijk)": evaluate(DoseGridOffset((0.5,) * 3)(state), metrics),
@@ -155,6 +159,7 @@ def run_experiment(cfg: dict, outdir: str | Path) -> dict[str, Path]:
                 state.prescription_gy,
                 theme=theme,
                 rx_label=state.rx_label,
+                color_names=state.names,
                 title="DVH: grid assumptions vs a physical shift",
             ),
         )
@@ -173,7 +178,10 @@ def run_experiment(cfg: dict, outdir: str | Path) -> dict[str, Path]:
         table("mc_metrics", res.metrics)
         table("mc_summary", res.summary().reset_index())
         table("mc_draws", res.draws)
-        figure("mc_dvh_band", viz.plot_mc_bands(res, theme=theme, rx_label=state.rx_label))
+        figure(
+            "mc_dvh_band",
+            viz.plot_mc_bands(res, theme=theme, rx_label=state.rx_label, color_names=state.names),
+        )
         cons = constraints_from(mc.get("constraints"))
         if cons:
             table(
@@ -195,7 +203,12 @@ def run_experiment(cfg: dict, outdir: str | Path) -> dict[str, Path]:
                     ]
                 ),
             )
-            figure("mc_hist", viz.plot_metric_distribution(res, cons[0].key, cons[0], theme))
+            figure(
+                "mc_hist",
+                viz.plot_metric_distribution(
+                    res, cons[0].key, cons[0], theme, color_names=state.names
+                ),
+            )
 
     elif kind == "margin_scan":
         mc = cfg.get("margin_scan", {})
@@ -217,9 +230,19 @@ def run_experiment(cfg: dict, outdir: str | Path) -> dict[str, Path]:
         figure(
             "margin_scan",
             viz.plot_margin_scan(
-                df, float(model.van_herk_margin_mm().max()), label=f"P({con})", theme=theme
+                df,
+                float(model.van_herk_margin_mm().max()),
+                label=f"P({con})",
+                theme=theme,
+                color=viz.entity_colors(state.names, theme)[con.structure],
             ),
         )
+
+    elif kind == "resolution_scan":
+        rc = cfg.get("resolution_scan", {})
+        df = resolution_scan(state, rc.get("factors", [1, 2, 3, 4]), rc.get("keys"), metrics)
+        table("resolution_scan", df)
+        figure("resolution_scan", viz.plot_resolution_scan(df, theme, color_names=state.names))
 
     elif kind == "contour_variation":
         _contour_variation(cfg, state, metrics, theme, table, figure)
@@ -265,6 +288,7 @@ def _contour_variation(cfg, state, metrics, theme, table, figure) -> None:
         viz.plot_dvh_overlay(
             evals,
             rx,
+            color_names=state.names,
             title="Same planned dose, different contours",
             subtitle="planning contours vs contours drawn on later images",
             theme=theme,
@@ -286,6 +310,7 @@ def _contour_variation(cfg, state, metrics, theme, table, figure) -> None:
             title="How much rigid shift is the measured contour change worth?",
             subtitle="Smallest axis-aligned shift with the same effect (lower bound)",
             na_label="n/a: no rigid shift reproduces this (or organ volume changed)",
+            color_names=state.names,
         ),
     )
 

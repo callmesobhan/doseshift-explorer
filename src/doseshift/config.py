@@ -11,7 +11,14 @@ from .metrics import Constraint
 from .montecarlo import ErrorModel
 from .state import PlanState
 
-EXPERIMENTS = ("sweep", "grid_audit", "monte_carlo", "margin_scan", "contour_variation")
+EXPERIMENTS = (
+    "sweep",
+    "grid_audit",
+    "monte_carlo",
+    "margin_scan",
+    "contour_variation",
+    "resolution_scan",
+)
 
 
 def load_config(path: str | Path) -> dict:

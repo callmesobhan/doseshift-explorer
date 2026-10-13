@@ -86,8 +86,8 @@ number of fractions matter.
 *Is the Monte Carlo consistent with the van Herk margin recipe, and how robust is that?*
 
 The phantom places the 95 % isodose on the PTV surface with a 3.2 mm penumbra, close to the recipe's
-own assumptions. At the 3D recipe margin (6.95 mm for Σ = 2, σ = 3) P(CTV Dmin ≥ 95 % Rx) is
-0.89 ± 0.013 (target 0.90), and in 1D the 90 % point falls near the 1.28·Σ version of the recipe
+own assumptions. At 7 mm, the whole-millimetre point next to the 3D recipe margin (6.95 mm for
+Σ = 2, σ = 3), P(CTV Dmin ≥ 95 % Rx) is 0.89 ± 0.013 (target 0.90), and in 1D the 90 % point falls near the 1.28·Σ version of the recipe
 (≈ 4.5 mm). A regression test pins this to 0.84-0.95.
 
 **This is a consistency check, not a validation, and it is not robust to setup choices.** An
@@ -126,6 +126,7 @@ sign-aware lower-bound equivalent shift):
 
 What it says, and what it does not:
 
+- **Voxel-size scaling is tested properly in R7** (one plan, many grids), not here.
 - **Relative to the plan the cost is largest for the small tumour:** 1.6 Gy is 12 % of the 13 Gy
   prescription for the 1 cc tumour in VS-SEG-135, against 3 % for the pancreas ROI D95%.
 - **The equivalents are lower bounds on a displacement that is known**, so they mostly show how
@@ -173,6 +174,66 @@ rigid shift (a lower bound along the best axis, here −x, while the stomach/duo
 ill-conditioned (a +0.3 / +0.08 Gy change). Patient 014's CBCT contours cover 1.7-4.7× the volume of
 the planning ones, which is a difference in what was contoured, not just where; the tool's refusal
 to turn that into mm is the intended behaviour. Both patients are a sample of two.
+
+## R7: Does the cost of a half-voxel error scale with voxel size? (`resolution_scan`)
+
+R5 compares four different plans, which cannot separate voxel size from site and dose gradient. This
+experiment keeps **one plan** and coarsens its dose 1× to 4× (`resolution_scan.yaml`,
+`experiments/real/*_resolution.yaml`), applying the ±½-voxel offset to each coarsened plan and
+measuring the change against that coarsened plan. Only voxel size varies.
+
+| plan | metric | cost over the displacements scanned | log-log slope |
+|---|---|---|---|
+| phantom | PTV D95% | 3.6 → 23.5 Gy (2.6 → 10.4 mm) | 1.4 |
+| phantom | rectum D2% | 7.4 → 18.2 Gy (saturates) | 0.6 |
+| VS-SEG-135 | TV D95% | 1.24 → 4.11 Gy (0.9 → 3.5 mm) | 0.9 |
+| VS-SEG-135 | TV Dmean | 0.26 → 2.24 Gy | 1.6 |
+| VS-SEG-154 | TV D95% | 0.83 → 4.68 Gy | 1.3 |
+| Pancreas-014 | ROI D95% | 0.60 → 4.32 Gy (2.3 → 7.0 mm) | 1.8 |
+| Pancreas-014 | stomach/duodenum Dmean | 0.98 → 2.92 Gy (0.42 Gy/mm throughout) | 1.0 |
+| Pancreas-017 | ROI D95% | 0.35 → 1.37 Gy (1.2 → 4.6 mm) | 0.9 |
+| Pancreas-017 | stomach/duodenum D2% | 0.13 → 1.04 Gy | 1.5 |
+
+![resolution scan, Pancreas-CT-CB_014](img/real_pancreas014_resolution.png)
+
+Yes, on a single plan the cost grows with voxel size. It is roughly linear in the displacement for
+gradient-limited metrics (slope about 0.9-1.0), steeper (1.3-2.3) for metrics that depend on
+curvature or a threshold crossing (target mean dose, D95 when the displacement starts to exceed the
+penumbra), and it saturates once the displacement exceeds the penumbra (the phantom rectum D2%).
+The cost per millimetre of displacement is specific to the plan and metric (0.06-1.6 Gy/mm across
+these plans), so a cost measured on one plan cannot be transferred to another. Caveats: coarsening
+also smooths the dose, so each coarse grid is a different plan; the slopes come from 3-4 points per
+metric; four real plans.
+
+## R8: CT-to-CBCT registration across scanners (`scripts/cbct_registration.py`)
+
+*Can the registration module align a CBCT to a planning CT, and could that give setup errors?*
+
+Validated with ground truth (`tests/test_registration.py`, `tests/test_real_data.py`): a known rigid
+motion is applied and the "scan" is re-made on a coarser anisotropic grid with an unrelated frame
+origin, a nonlinear intensity remap, blur and noise; mutual information with a centroid start then
+recovers the motion to ≤ 0.04 mm / ≤ 0.5° on the phantom CT and ≤ 1.0 mm / ≤ 0.14° on the real pancreas
+planning CT, from starts up to 12 mm off.
+
+On the real pancreas CBCTs there is no ground truth, so the script reports diagnostics instead:
+
+- The dataset's own placement of each CBCT into the planning frame ("Aligned CT" series) is a **pure
+  translation** (rotation ≤ 0.07°), recovered by same-modality registration; pairing is unambiguous
+  (residual MSE 1,654-5,219 for true pairs against about 80,000 for wrong ones).
+- Mutual-information registration of each CBCT to the planning CT is well defined for only **one of
+  the four**: Pancreas-014's CBCT 1 gives the same answer from every start (start spread 0.63 mm;
+  differs from the dataset placement by (1.9, 3.3, 7.1) mm and 2.3° about y). Its CBCT 2 depends on the
+  start (spread 4.3 mm, difference from the dataset placement 23 mm) and both of Pancreas-017's CBCTs
+  do so strongly (spread 12-13 mm, about 30 mm along z). The CBCT field of view is truncated
+  (262 × 262 × 184 mm against a full-body planning CT) and organs move, so the metric is weakly
+  constrained.
+
+Consequence: these registrations are **not** a source of setup errors. Besides being unreliable, the
+CBCT frame is unrelated to the planning frame and the collection has no RTPLAN (no isocentre), so a
+translation cannot be read as a setup error even where the optimum is well defined. An empirical
+error model from this data is therefore not feasible; it needs images whose frames are related
+(planning isocentre known) and a reference alignment. The start spread is the diagnostic to look at
+before trusting any such registration.
 
 ## Adding an experiment
 

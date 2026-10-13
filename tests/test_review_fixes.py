@@ -1,6 +1,7 @@
 """Regression tests for the findings of the independent scientific review."""
 
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -107,7 +108,8 @@ def test_blur_rejects_oblique_dose_grids(case):
 
     direction = Rotation.from_euler("z", 30, degrees=True).as_matrix()
     g = Grid.from_spacing((20, 30, 30), (3.0, 3.0, 3.0), (-45.0, -45.0, -30.0), direction)
-    st = PlanState.from_masks(DoseGrid(g, np.full(g.shape, 60.0)), [case.masks["CTV"]], 60.0)
+    dose = DoseGrid(g, np.full(g.shape, 60.0))
+    st = PlanState.from_masks(dose, [case.masks["CTV"]], 60.0)
     with pytest.raises(ValueError, match="aligned with the patient axes"):
         simulate(st, ErrorModel(rand_sigma_mm=(2.0, 2.0, 2.0)), 1, method="blur")
 
@@ -221,3 +223,72 @@ def test_structure_sampling_scenarios_keep_structure_volume(state):
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # a well-covered phantom raises no volume warnings
         ndimage.label(np.ones((2, 2)))
+
+
+# ---- resolution scan: one plan, many grids ----
+def test_resolution_scan_isolates_voxel_size_on_a_single_plan(state):
+    from doseshift.experiments import loglog_slope, resolution_scan
+
+    keys = ["PTV:D95%", "Rectum:Dmean"]
+    df = resolution_scan(state, (1, 2, 3), keys)
+    assert set(df["factor"]) == {1, 2, 3} and set(df["metric"]) == set(keys)
+    d = df[df["metric"] == "PTV:D95%"].sort_values("factor")
+    # displacement is the geometry of the offset: half a voxel on all three axes
+    assert np.allclose(d["displacement_mm"], 0.5 * np.sqrt(3) * 3.0 * d["factor"])
+    assert np.all(np.diff(d["cost"]) > 0)  # bigger voxels, bigger cost, on the same plan
+    assert 0.5 < loglog_slope(df, "PTV:D95%") < 2.0
+    # the slope helper needs at least two usable points
+    assert np.isnan(loglog_slope(df[df["factor"] == 1], "PTV:D95%"))
+
+
+def test_resolution_scan_runs_through_the_config_and_runner(tmp_path):
+    from doseshift.config import load_config
+    from doseshift.runner import run_experiment
+
+    cfg = load_config(Path(__file__).parent.parent / "experiments" / "resolution_scan.yaml")
+    cfg["resolution_scan"]["factors"] = [1, 2]
+    files = run_experiment(cfg, tmp_path)
+    assert (
+        files["resolution_scan.csv"].exists() and files["resolution_scan.png"].stat().st_size > 1000
+    )
+
+
+# ---- plots and app (independent review of viz / app) ----
+def test_more_than_eight_structures_degrade_to_grey_instead_of_aborting():
+    from doseshift import viz
+
+    names = [f"S{i}" for i in range(10)]
+    with pytest.warns(UserWarning, match="share a neutral grey"):
+        colors = viz.entity_colors(names)
+    assert len(set(colors[n] for n in names[:8])) == 8 and colors["S8"] == colors["S9"]
+
+
+def test_structure_keeps_its_colour_when_a_figure_shows_a_subset(state):
+    from doseshift import viz
+
+    full = viz.entity_colors(state.names)
+    ev = {"planned": evaluate(state)}
+    fig = viz.plot_dvh_overlay(ev, 60.0, structures=["Rectum"], color_names=state.names)
+    line = [ln for ln in fig.axes[0].lines if len(ln.get_xdata()) > 100][0]
+    assert line.get_color() == full["Rectum"]
+
+
+def test_long_subtitles_are_shortened_not_clipped(state):
+    from doseshift import viz
+
+    fig = viz.plot_dvh_overlay({"planned": evaluate(state)}, 60.0, subtitle="perturbation " * 40)
+    texts = [t.get_text() for t in fig.texts]
+    assert any(t.endswith("...") for t in texts) and max(len(t) for t in texts) < 120
+
+
+def test_app_explains_a_change_no_rigid_shift_can_produce():
+    from streamlit.testing.v1 import AppTest
+
+    app = Path(__file__).parent.parent / "app" / "streamlit_app.py"
+    at = AppTest.from_file(str(app), default_timeout=120).run()
+    sel = {s.label: s for s in at.sidebar.selectbox}
+    sel["Interpolation"].select(3).run()  # cubic raises PTV D95: no rigid shift does that
+    assert not at.exception
+    text = " ".join(m.value for m in at.markdown)
+    assert "nan" not in text.lower().replace("fanout", "") and "magnitude-matched" not in text
+    assert "no rigid shift" in text or "lower bound" in text

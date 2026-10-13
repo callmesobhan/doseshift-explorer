@@ -1,0 +1,35 @@
+experiment: resolution_scan
+case:
+  type: dicom
+  image_dir: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_014/CT_2_87030725
+  dose: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_014/RTDOSE_5_82520263/00000001.dcm
+  rtstruct: data/raw/pancreas-ct-cbct-seg/Pancreas-CT-CB_014/RTSTRUCT_6_25817542/00000001.dcm
+  prescription_gy: 46.0
+  roles:
+    ROI: ptv
+    Stomach_duo_planCT: oar
+    Bowel_sm_planCT: oar
+  prescription_is_reference: true
+metrics:
+  ROI:
+  - D98%
+  - D95%
+  - D50%
+  - D2%
+  - Dmean
+  - HI
+  Stomach_duo_planCT: &id001
+  - Dmean
+  - D2%
+  - D5cc
+  - D0.5cc
+  Bowel_sm_planCT: *id001
+resolution_scan:
+  factors:
+  - 1
+  - 2
+  - 3
+  keys:
+  - ROI:D95%
+  - Stomach_duo_planCT:Dmean
+  - Stomach_duo_planCT:D2%

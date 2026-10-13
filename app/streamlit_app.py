@@ -75,33 +75,45 @@ if deform:
 perturbed = Compose(*steps)(state)
 
 planned_ev, new_ev = evaluate(state), evaluate(perturbed)
+if perturbed.history:
+    st.caption("Applied: " + " + ".join(perturbed.history))
 left, right = st.columns([3, 2])
 with left:
     st.pyplot(
         viz.plot_dvh_overlay(
             {"planned": planned_ev, "perturbed": new_ev},
             rx,
-            subtitle=perturbed.history and " + ".join(perturbed.history) or "no perturbation",
+            subtitle=f"{len(perturbed.history)} perturbation(s) applied"
+            if perturbed.history
+            else "no perturbation",
         )
     )
 with right:
     a, b = planned_ev.flat(), new_ev.flat()
     df = pd.DataFrame({"planned": a, "perturbed": b})
     df["change"] = df["perturbed"] - df["planned"]
-    st.dataframe(df.round(2), height=420, use_container_width=True)
+    st.dataframe(df.round(2), height=420)
 
 st.subheader("What is this worth as a setup error?")
 key = st.selectbox("Metric", ["PTV:D95%", "CTV:D98%", "Rectum:D2%", "Rectum:Dmean", "Bladder:D2%"])
 delta = b[key] - a[key]
 mm, direction = equivalent_shift_mm(sweeps, key, delta, min_delta=0.1)
-if np.isinf(mm):
+if np.isnan(mm):
+    st.write(
+        f"{key} changed by **{delta:+.2f}**, which no rigid shift of the patient can reproduce "
+        "(rigid shifts only lower target coverage and move organs along fixed gradients): this is "
+        "a numerical or grid effect."
+    )
+elif np.isinf(mm):
     st.write(f"{key} changed by {delta:+.2f}: more than any rigid shift up to 12 mm would cause.")
 elif mm == 0:
     st.write(f"{key} changed by {delta:+.2f}: negligible.")
 else:
+    shown = "< 0.1" if mm < 0.05 else f"{mm:.1f}"
     st.write(
-        f"{key} changed by **{delta:+.2f}**, about what a **{mm:.1f} mm** rigid shift "
-        f"({direction}) causes (magnitude-matched)."
+        f"{key} changed by **{delta:+.2f}**; the smallest axis-aligned rigid shift of the patient "
+        f"that moves it the same way is **{shown} mm** ({direction}). This is a lower bound, not "
+        "an estimate of the error."
     )
 with st.expander("Plan geometry"):
     st.pyplot(viz.plot_slices(state, ct=(case.ct_grid, case.ct_hu)))

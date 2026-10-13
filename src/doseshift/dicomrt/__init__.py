@@ -1,4 +1,4 @@
-from .discover import CaseFiles, case_config, discover_cases
+from .discover import CaseFiles, case_config, discover_cases, discover_with_report
 from .reader import (
     alignment_report,
     check_references,
@@ -18,6 +18,7 @@ __all__ = [
     "CaseFiles",
     "case_config",
     "discover_cases",
+    "discover_with_report",
     "alignment_report",
     "check_references",
     "load_ct",

@@ -1,0 +1,8 @@
+# Does the cost of a half-voxel convention error scale with voxel size? One plan, dose coarsened 1x-4x.
+experiment: resolution_scan
+case:
+  type: synthetic
+  seed: 0
+resolution_scan:
+  factors: [1, 2, 3, 4]
+  keys: ["PTV:D95%", "Rectum:D2%", "Rectum:Dmean"]
