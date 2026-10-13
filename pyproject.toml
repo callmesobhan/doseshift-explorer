@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "doseshift"
+dynamic = ["version"]
+description = "Radiotherapy dose robustness under geometric uncertainty and dose-grid alignment assumptions"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Sobhan Shahbazi" }]
+keywords = ["radiotherapy", "DVH", "DICOM-RT", "dose robustness", "Monte Carlo", "medical physics"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+    "contourpy>=1.2",
+    "pydicom>=3.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+registration = ["SimpleITK>=2.3"]
+app = ["streamlit>=1.35"]
+dev = ["pytest>=8", "ruff==0.17.0"]
+all = ["doseshift[registration,app,dev]"]
+
+[project.urls]
+Homepage = "https://github.com/callmesobhan/doseshift-explorer"
+Repository = "https://github.com/callmesobhan/doseshift-explorer"
+Issues = "https://github.com/callmesobhan/doseshift-explorer/issues"
+
+[project.scripts]
+doseshift = "doseshift.cli:main"
+
+[tool.hatch.version]
+path = "src/doseshift/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/doseshift"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

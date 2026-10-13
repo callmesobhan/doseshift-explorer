@@ -1,0 +1,13 @@
+experiment: grid_audit
+case:
+  type: dicom
+  image_dir: data/raw/vs-seg/VS-SEG-135/MR_0_77133250
+  dose: data/raw/vs-seg/VS-SEG-135/RTDOSE_2_53137353/00000001.dcm
+  rtstruct: data/raw/vs-seg/VS-SEG-135/RTSTRUCT_6_43199231/00000001.dcm
+  prescription_gy: 13.0
+  roles:
+    TV: ptv
+audit:
+  keys:
+  - TV:D95%
+  max_mm: 6

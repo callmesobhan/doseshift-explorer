@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+dist/
+build/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Never commit patient data or run outputs. Everything under data/ is ignored except its README.
+data/*
+!data/README.md
+outputs/
+*.dcm
+*.DCM
+*.dicom
+*.IMA
+*.nii
+*.nii.gz
+*.mha
+*.mhd
+*.nrrd
+
+# Streamlit secrets
+.streamlit/secrets.toml

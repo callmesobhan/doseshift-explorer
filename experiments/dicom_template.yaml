@@ -1,0 +1,21 @@
+# Template for a real case. Copy, edit paths/ROI names, then:  doseshift run experiments/<name>.yaml
+# Run `doseshift inspect --ct-dir ... --dose ... --rtstruct ...` first to check geometry.
+experiment: grid_audit
+case:
+  type: dicom
+  ct_dir: data/raw/case01/CT
+  dose: data/raw/case01/RTDOSE.dcm
+  rtstruct: data/raw/case01/RTSTRUCT.dcm
+  prescription_gy: 60.0
+  roles:                 # ROI name -> role; unlisted ROIs are ignored
+    PTV_6000: ptv
+    CTV: ctv
+    Rectum: oar
+    Bladder: oar
+audit:
+  keys: ["PTV_6000:D95%", "Rectum:D2%"]
+metrics:                 # optional per-structure metric lists (defaults by role otherwise)
+  PTV_6000: ["D98%", "D95%", "D2%", "Dmean", "V95%", "CI", "GI", "HI"]
+  CTV: ["D98%", "D95%", "Dmean"]
+  Rectum: ["Dmean", "D2%", "V40Gy", "V50Gy"]
+  Bladder: ["Dmean", "D2%", "V40Gy"]
