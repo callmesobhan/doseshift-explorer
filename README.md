@@ -1,11 +1,18 @@
-# DoseShift Explorer
+<div align="center">
 
-**Radiotherapy dose robustness under geometric uncertainty.**
-Explore how controlled geometric perturbations and dose-grid alignment assumptions change DVHs and
-plan-quality metrics.
+# DoseShift Explorer 🎯📐
 
-`Python` · `DICOM-RT` · `image registration (SimpleITK)` · `Monte Carlo` · `visualization`
+**Radiotherapy Dose Robustness Under Geometric & Grid-Alignment Uncertainty**  
+*Explore how controlled geometric perturbations and dose-grid convention assumptions change DVHs and plan-quality metrics on a unified equivalent-shift scale*
 
+[![CI](https://github.com/callmesobhan/doseshift-explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/callmesobhan/doseshift-explorer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![DICOM-RT](https://img.shields.io/badge/Standard-DICOM--RT%20%7C%20SimpleITK%20%7C%20DVH-06b6d4)](#the-idea)
+
+</div>
+
+> [!WARNING]
 > **Research and teaching tool. Not validated for clinical use and not a treatment-planning system.**
 > It does not recompute dose; read [docs/limitations.md](docs/limitations.md) before using any number.
 
